@@ -29,7 +29,7 @@ program
     try {
       // Display Treblle ASCII art
       console.log(getTreblleAsciiArt());
-      console.log(colors.blue('🔍 OpenAPI Minifier v1.0.0\n'));
+      console.log(colors.blue('================================================================\n'));
       
       // Resolve input file path
       const inputPath = resolve(input);

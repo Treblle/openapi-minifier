@@ -11,16 +11,17 @@ export const colors = {
 };
 
 export function getTreblleAsciiArt(): string {
-  const art = `
+  const asciiArt = `
 ████████╗██████╗ ███████╗██████╗ ██╗     ██╗     ███████╗
 ╚══██╔══╝██╔══██╗██╔════╝██╔══██╗██║     ██║     ██╔════╝
    ██║   ██████╔╝█████╗  ██████╔╝██║     ██║     █████╗  
    ██║   ██╔══██╗██╔══╝  ██╔══██╗██║     ██║     ██╔══╝  
    ██║   ██║  ██║███████╗██████╔╝███████╗███████╗███████╗
-   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚══════╝╚══════╝
-`;
+   ╚═╝   ╚═╝  ╚═╝╚══════╝╚═════╝ ╚══════╝╚══════╝╚══════╝`;
   
-  return colors.cyan(art);
+  const tagline = '      API Intelligence platform - https://treblle.com';
+  
+  return colors.blue(asciiArt) + '\n\n' + colors.gray(tagline);
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {

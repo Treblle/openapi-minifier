@@ -1,0 +1,50 @@
+{
+  "name": "openapi-minifier",
+  "version": "1.0.0",
+  "description": "A CLI tool to minify OpenAPI v3 specifications by removing redundant information not relevant to AI Agents and LLMs",
+  "main": "dist/index.js",
+  "type": "module",
+  "bin": {
+    "openapi-minify": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/cli.ts",
+    "start": "node dist/cli.js",
+    "test": "vitest",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write src/**/*.ts"
+  },
+  "keywords": [
+    "openapi",
+    "api",
+    "minify",
+    "cli",
+    "ai",
+    "llm",
+    "swagger"
+  ],
+  "author": "OpenAPI Minifier",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^20.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^3.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^1.0.0"
+  },
+  "dependencies": {
+    "@apidevtools/swagger-parser": "^10.1.0",
+    "commander": "^11.0.0",
+    "js-yaml": "^4.1.0",
+    "picocolors": "^1.0.0",
+    "stream-json": "^1.8.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

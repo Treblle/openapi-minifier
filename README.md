@@ -48,27 +48,27 @@ npx openapi-minifier input.json
 ### Basic Usage
 
 ```bash
-openapi-minify input.json
-openapi-minify input.yaml -o output.yaml
+openapi-minifier input.json
+openapi-minifier input.yaml -o output.yaml
 ```
 
 ### Presets
 
 ```bash
 # Maximum reduction (recommended for AI/LLMs)
-openapi-minify input.json --preset max
+openapi-minifier input.json --preset max
 
 # Balanced approach (keeps schema descriptions)
-openapi-minify input.json --preset balanced
+openapi-minifier input.json --preset balanced
 
 # Minimal reduction (preserves documentation)
-openapi-minify input.json --preset min
+openapi-minifier input.json --preset min
 ```
 
 ### Advanced Options
 
 ```bash
-openapi-minify input.json \
+openapi-minifier input.json \
   --output output.json \
   --preset balanced \
   --keep-examples \

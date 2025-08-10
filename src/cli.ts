@@ -23,6 +23,9 @@ program
   .option('--keep-descriptions <mode>', 'Description handling: all, schema-only, none', 'schema-only')
   .option('--keep-summaries', 'Keep summary fields', false)
   .option('--keep-tags', 'Keep tag descriptions', false)
+  .option('--remove-deprecated', 'Remove deprecated paths and operations', false)
+  .option('--extract-common-responses', 'Extract common responses to components/responses', false)
+  .option('--extract-common-schemas', 'Extract common schemas to components/schemas', false)
   .option('--validate', 'Enable OpenAPI validation', false)
   .option('--format <format>', 'Output format: json, yaml', 'json')
   .action(async (input: string, options: any) => {
@@ -57,6 +60,9 @@ program
         keepDescriptions: options.keepDescriptions,
         keepSummaries: options.keepSummaries,
         keepTags: options.keepTags,
+        removeDeprecated: options.removeDeprecated,
+        extractCommonResponses: options.extractCommonResponses,
+        extractCommonSchemas: options.extractCommonSchemas,
         validate: options.validate,
         preset: options.preset,
       };
@@ -88,6 +94,9 @@ program
       console.log(`   • Descriptions: ${colors.yellow(result.stats.removedElements.descriptions.toString())}`);
       console.log(`   • Summaries: ${colors.yellow(result.stats.removedElements.summaries.toString())}`);
       console.log(`   • Tags: ${colors.yellow(result.stats.removedElements.tags.toString())}`);
+      console.log(`   • Deprecated paths: ${colors.yellow(result.stats.removedElements.deprecatedPaths.toString())}`);
+      console.log(`   • Extracted responses: ${colors.yellow(result.stats.removedElements.extractedResponses.toString())}`);
+      console.log(`   • Extracted schemas: ${colors.yellow(result.stats.removedElements.extractedSchemas.toString())}`);
       
     } catch (error) {
       console.error(colors.red('❌ Error:'), error instanceof Error ? error.message : String(error));
@@ -113,18 +122,27 @@ function applyPreset(options: MinificationOptions): void {
       options.keepDescriptions = 'schema-only';
       options.keepSummaries = false;
       options.keepTags = false;
+      options.removeDeprecated = true;
+      options.extractCommonResponses = true;
+      options.extractCommonSchemas = true;
       break;
     case 'max':
       options.keepExamples = false;
       options.keepDescriptions = 'none';
       options.keepSummaries = false;
       options.keepTags = false;
+      options.removeDeprecated = true;
+      options.extractCommonResponses = true;
+      options.extractCommonSchemas = true;
       break;
     case 'min':
       options.keepExamples = true;
       options.keepDescriptions = 'all';
       options.keepSummaries = true;
       options.keepTags = true;
+      options.removeDeprecated = false;
+      options.extractCommonResponses = false;
+      options.extractCommonSchemas = false;
       break;
   }
 }

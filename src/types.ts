@@ -3,6 +3,9 @@ export interface MinificationOptions {
   keepDescriptions: 'all' | 'schema-only' | 'none';
   keepSummaries: boolean;
   keepTags: boolean;
+  removeDeprecated: boolean;
+  extractCommonResponses: boolean;
+  extractCommonSchemas: boolean;
   validate: boolean;
   preset?: 'max' | 'balanced' | 'min';
 }
@@ -16,6 +19,9 @@ export interface MinificationResult {
     descriptions: number;
     summaries: number;
     tags: number;
+    deprecatedPaths: number;
+    extractedResponses: number;
+    extractedSchemas: number;
   };
 }
 

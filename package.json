@@ -1,7 +1,7 @@
 {
   "name": "openapi-minifier",
   "version": "1.0.0",
-  "description": "A CLI tool to minify OpenAPI v3 specifications by removing redundant information not relevant to AI Agents and LLMs",
+  "description": "A CLI tool by Treblle tp minify OpenAPI V3 Specs by removing redundant information not relevant to AI Agents and LLMs.",
   "main": "dist/index.js",
   "type": "module",
   "bin": {
@@ -22,9 +22,10 @@
     "cli",
     "ai",
     "llm",
-    "swagger"
+    "swagger",
+    "treblle"
   ],
-  "author": "OpenAPI Minifier",
+  "author": "cindreta",
   "license": "MIT",
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",

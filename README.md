@@ -1,6 +1,6 @@
 # OpenAPI Minifier
 
-A CLI tool to minify OpenAPI v3 specifications by removing redundant information not relevant to AI Agents and LLMs.
+A CLI tool by Treblle to minify OpenAPI v3 specifications by removing redundant information not relevant to AI Agents and LLMs.
 
 ## Features
 
@@ -12,6 +12,8 @@ A CLI tool to minify OpenAPI v3 specifications by removing redundant information
 - ✅ **Large File Support**: Efficiently handles multi-MB specification files
 - ✅ **Validation**: Built-in OpenAPI specification validation
 - ✅ **Detailed Stats**: Shows size reduction and removed elements
+- ✅ **Deprecated Path Removal**: Option to remove deprecated API paths
+- ✅ **Common Response/Schema Extraction**: Extract reusable components
 
 ## Installation
 
@@ -53,18 +55,21 @@ openapi-minify input.json --preset min
 openapi-minify input.json \
   --output output.json \
   --preset balanced \
-  --keep-examples=false \
-  --keep-descriptions=schema-only \
-  --format=json
+  --keep-examples \
+  --keep-descriptions schema-only \
+  --remove-deprecated \
+  --extract-common-responses \
+  --validate \
+  --format json
 ```
 
 ## Presets
 
-| Preset | Examples | Descriptions | Schema Cleanup | Unused Components | Size Reduction | Use Case |
-|--------|----------|-------------|----------------|-------------------|----------------|----------|
-| `max` | ❌ Remove | ❌ Remove all | ✅ Aggressive | ✅ Remove unused | **🔥 ~78%** | **Best for AI/LLMs** |
-| `balanced` | ❌ Remove | 📄 Schema only | ✅ Conservative | ✅ Remove unused | **🔥 ~67%** | **Recommended default** |
-| `min` | ✅ Keep | ✅ Keep all | ❌ None | ❌ Keep all | ~0% | Preserve documentation |
+| Preset | Examples | Descriptions | Schema Cleanup | Remove Deprecated | Extract Components | Size Reduction | Use Case |
+|--------|----------|-------------|----------------|-------------------|-------------------|----------------|----------|
+| `max` | ❌ Remove | ❌ Remove all | ✅ Aggressive | ✅ Remove | ✅ Extract | **🔥 ~78%** | **Best for AI/LLMs** |
+| `balanced` | ❌ Remove | 📄 Schema only | ✅ Conservative | ✅ Remove | ✅ Extract | **🔥 ~67%** | **Recommended default** |
+| `min` | ✅ Keep | ✅ Keep all | ❌ None | ❌ Keep | ❌ No extraction | ~0% | Preserve documentation |
 
 ## What Gets Removed
 
@@ -98,7 +103,10 @@ openapi-minify input.json \
    • Examples: 62 removed
    • Descriptions: 923 removed  
    • Summaries: 19 removed
-   • Unused schemas: 193 removed
+   • Tags: 15 removed
+   • Deprecated paths: 8 removed
+   • Extracted responses: 12 extracted
+   • Extracted schemas: 45 extracted
    • Schema properties cleaned (format, pattern, constraints)
    • JSON minification (removes all whitespace)
 ```
@@ -113,8 +121,11 @@ openapi-minify input.json \
    Optimizations applied:
    • Examples: 62 removed
    • Descriptions: 734 removed (kept schema descriptions)
-   • Summaries: 19 removed  
-   • Unused schemas: 193 removed
+   • Summaries: 19 removed
+   • Tags: 15 removed
+   • Deprecated paths: 8 removed
+   • Extracted responses: 12 extracted
+   • Extracted schemas: 45 extracted
    • Schema properties cleaned (format, pattern)
    • JSON minification (removes all whitespace)
 ```
@@ -123,16 +134,19 @@ openapi-minify input.json \
 
 ```
 Options:
-  -V, --version                    output the version number
-  -o, --output <file>              Output file path
-  --preset <preset>                Minification preset: max, balanced, min (default: "balanced")
-  --keep-examples                  Keep example values (default: false)
-  --keep-descriptions <mode>       Description handling: all, schema-only, none (default: "schema-only")
-  --keep-summaries                 Keep summary fields (default: false)
-  --keep-tags                      Keep tag descriptions (default: false)
-  --no-validate                   Skip OpenAPI validation
-  --format <format>                Output format: json, yaml (default: "json")
-  -h, --help                       display help for command
+  -V, --version                        output the version number
+  -o, --output <file>                  Output file path
+  --preset <preset>                    Minification preset: max, balanced, min (default: "balanced")
+  --keep-examples                      Keep example values (default: false)
+  --keep-descriptions <mode>           Description handling: all, schema-only, none (default: "schema-only")
+  --keep-summaries                     Keep summary fields (default: false)
+  --keep-tags                          Keep tag descriptions (default: false)
+  --remove-deprecated                  Remove deprecated paths and operations (default: false)
+  --extract-common-responses           Extract common responses to components/responses (default: false)
+  --extract-common-schemas             Extract common schemas to components/schemas (default: false)
+  --validate                           Enable OpenAPI validation (default: false)
+  --format <format>                    Output format: json, yaml (default: "json")
+  -h, --help                           display help for command
 ```
 
 ## Development

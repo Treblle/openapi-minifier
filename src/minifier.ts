@@ -24,6 +24,9 @@ export async function minifyOpenAPI(
     descriptions: 0,
     summaries: 0,
     tags: 0,
+    deprecatedPaths: 0,
+    extractedResponses: 0,
+    extractedSchemas: 0,
   };
   
   // Count original elements
@@ -34,11 +37,26 @@ export async function minifyOpenAPI(
     tags: countNestedKey(originalSpec, 'tags'),
   };
   
+  // Remove deprecated paths before other minifications
+  if (options.removeDeprecated) {
+    removedElements.deprecatedPaths = removeDeprecatedPaths(spec);
+  }
+  
+  // Extract common responses before other minifications
+  if (options.extractCommonResponses) {
+    removedElements.extractedResponses = extractCommonResponses(spec);
+  }
+  
+  // Extract common schemas before other minifications
+  if (options.extractCommonSchemas) {
+    removedElements.extractedSchemas = extractCommonSchemas(spec);
+  }
+  
   // Apply minification rules
   minifyObject(spec, options, removedElements);
   
-  // Remove unused components (for max and balanced presets)
-  if (options.preset === 'max' || options.preset === 'balanced') {
+  // Remove unused components (for max and balanced presets, or when deprecated paths were removed)
+  if (options.preset === 'max' || options.preset === 'balanced' || removedElements.deprecatedPaths > 0) {
     removeUnusedComponents(spec);
   }
   
@@ -81,10 +99,87 @@ export async function minifyOpenAPI(
   };
 }
 
+function minifyDescriptionText(description: string): string {
+  return description
+    // Remove HTML tags
+    .replace(/<[^>]*>/g, '')
+    // Remove markdown formatting
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+    .replace(/\*([^*]+)\*/g, '$1')     // italic
+    .replace(/`([^`]+)`/g, '$1')       // inline code
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links [text](url) -> text
+    .replace(/^#+\s*/gm, '')          // headers
+    .replace(/^[-*]\s*/gm, '')        // list items
+    .replace(/^\d+\.\s*/gm, '')       // numbered lists
+    // Normalize whitespace
+    .replace(/\s+/g, ' ')             // multiple spaces/tabs/newlines to single space
+    .replace(/\n\s*\n/g, ' ')         // multiple newlines to single space
+    .trim();                          // remove leading/trailing whitespace
+}
+
+function removeDeprecatedPaths(spec: any): number {
+  if (!spec.paths || typeof spec.paths !== 'object') {
+    return 0;
+  }
+  
+  let removedCount = 0;
+  const pathsToRemove: string[] = [];
+  
+  // Find deprecated paths
+  for (const [pathName, pathItem] of Object.entries(spec.paths)) {
+    if (isObject(pathItem)) {
+      // Check if the path item itself is deprecated
+      if (pathItem.deprecated === true) {
+        pathsToRemove.push(pathName);
+        removedCount++;
+        continue;
+      }
+      
+      // Check if all operations in the path are deprecated
+      const operations = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'trace'];
+      const pathOperations = operations.filter(op => op in pathItem);
+      
+      if (pathOperations.length > 0) {
+        const allOperationsDeprecated = pathOperations.every(op => {
+          const operation = pathItem[op];
+          return isObject(operation) && operation.deprecated === true;
+        });
+        
+        if (allOperationsDeprecated) {
+          pathsToRemove.push(pathName);
+          removedCount++;
+        } else {
+          // Remove individual deprecated operations
+          for (const op of pathOperations) {
+            const operation = pathItem[op];
+            if (isObject(operation) && operation.deprecated === true) {
+              delete pathItem[op];
+            }
+          }
+          
+          // If no operations remain, remove the entire path
+          const remainingOps = operations.filter(op => op in pathItem);
+          if (remainingOps.length === 0) {
+            pathsToRemove.push(pathName);
+            removedCount++;
+          }
+        }
+      }
+    }
+  }
+  
+  // Remove deprecated paths
+  for (const pathName of pathsToRemove) {
+    delete spec.paths[pathName];
+  }
+  
+  return removedCount;
+}
+
 function minifyObject(
   obj: unknown, 
   options: MinificationOptions, 
-  removedElements: { examples: number; descriptions: number; summaries: number; tags: number },
+  removedElements: { examples: number; descriptions: number; summaries: number; tags: number; deprecatedPaths: number; extractedResponses: number; extractedSchemas: number },
   path: string[] = []
 ): void {
   if (!isObject(obj)) return;
@@ -126,7 +221,7 @@ function processField(
   key: string,
   value: unknown,
   options: MinificationOptions,
-  removedElements: { examples: number; descriptions: number; summaries: number; tags: number },
+  removedElements: { examples: number; descriptions: number; summaries: number; tags: number; deprecatedPaths: number; extractedResponses: number; extractedSchemas: number },
   currentPath: string[]
 ): void {
   // Remove examples if not keeping them
@@ -136,28 +231,29 @@ function processField(
   }
   
   // Handle descriptions based on options
-  if (key === 'description' && options.keepDescriptions !== 'all') {
+  if (key === 'description' && typeof value === 'string') {
     // Never remove required description fields in OpenAPI spec
     const isRequiredDescription = isRequiredDescriptionField(currentPath);
     
-    if (!isRequiredDescription) {
-      if (options.keepDescriptions === 'none') {
+    if (options.keepDescriptions === 'none' && !isRequiredDescription) {
+      delete obj[key];
+      return;
+    } else if (options.keepDescriptions === 'schema-only' && !isRequiredDescription) {
+      // Keep descriptions only in schema definitions and component schemas
+      const isInSchema = currentPath.some(segment => 
+        segment === 'schemas' || 
+        segment === 'properties' ||
+        (segment === 'components' && currentPath.includes('schemas'))
+      );
+      
+      if (!isInSchema) {
         delete obj[key];
         return;
-      } else if (options.keepDescriptions === 'schema-only') {
-        // Keep descriptions only in schema definitions and component schemas
-        const isInSchema = currentPath.some(segment => 
-          segment === 'schemas' || 
-          segment === 'properties' ||
-          (segment === 'components' && currentPath.includes('schemas'))
-        );
-        
-        if (!isInSchema) {
-          delete obj[key];
-          return;
-        }
       }
     }
+    
+    // Minify the description content regardless of keeping strategy
+    obj[key] = minifyDescriptionText(value);
   }
   
   // Remove summaries if not keeping them (but preserve if required)
@@ -190,13 +286,15 @@ function processField(
     cleanInfoSection(obj as Record<string, unknown>, options);
   }
   
-  // Clean up servers - remove descriptions
+  // Clean up servers - remove or minify descriptions
   if (key === 'servers' && Array.isArray(value)) {
     const cleanedServers = value.map(server => {
       if (isObject(server)) {
         const cleaned = { ...server };
         if (!options.keepDescriptions || options.keepDescriptions === 'none') {
           delete cleaned.description;
+        } else if (typeof cleaned.description === 'string') {
+          cleaned.description = minifyDescriptionText(cleaned.description);
         }
         return cleaned;
       }
@@ -256,10 +354,16 @@ function cleanInfoSection(obj: Record<string, unknown>, options: MinificationOpt
   // Handle optional fields based on options
   for (const field of optionalFields) {
     if (field in obj) {
-      if (field === 'description' && options.keepDescriptions === 'none') {
-        continue; // Skip description
-      }
-      if (field === 'contact' || field === 'license') {
+      if (field === 'description') {
+        if (options.keepDescriptions === 'none') {
+          continue; // Skip description
+        } else if (typeof obj[field] === 'string') {
+          // Minify the description text
+          cleaned[field] = minifyDescriptionText(obj[field] as string);
+        } else {
+          cleaned[field] = obj[field];
+        }
+      } else if (field === 'contact' || field === 'license') {
         // Keep contact and license but clean them
         if (isObject(obj[field])) {
           if (field === 'contact') {
@@ -299,6 +403,9 @@ function cleanResponses(responses: Record<string, unknown>, options: Minificatio
       } else if (options.keepDescriptions === 'none') {
         // Replace with minimal description but don't remove it completely
         cleaned.description = getMinimalResponseDescription(statusCode);
+      } else if (typeof cleaned.description === 'string') {
+        // Minify existing description text
+        cleaned.description = minifyDescriptionText(cleaned.description);
       }
       
       if (!options.keepExamples) {
@@ -544,4 +651,386 @@ function removeUnusedComponents(spec: any): void {
   if (spec.components && Object.keys(spec.components).length === 0) {
     delete spec.components;
   }
+}
+
+function extractCommonResponses(spec: any): number {
+  if (!spec.paths || typeof spec.paths !== 'object') {
+    return 0;
+  }
+
+  // Collect all response objects with their locations and content
+  const responseMap = new Map<string, {
+    response: any;
+    locations: string[];
+  }>();
+
+  // First pass: collect all responses
+  function collectResponses(obj: any, currentPath: string[] = []): void {
+    if (!obj || typeof obj !== 'object') return;
+
+    if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        collectResponses(item, [...currentPath, index.toString()]);
+      });
+      return;
+    }
+
+    for (const [key, value] of Object.entries(obj)) {
+      const newPath = [...currentPath, key];
+      
+      // If we're in a responses section and this looks like a status code
+      if (currentPath[currentPath.length - 1] === 'responses' && 
+          /^\d{3}$/.test(key) && 
+          isObject(value)) {
+        
+        const responseKey = createResponseKey(value);
+        const locationKey = newPath.slice(0, -2).join('/') + `/${key}`;
+        
+        if (responseMap.has(responseKey)) {
+          responseMap.get(responseKey)!.locations.push(locationKey);
+        } else {
+          responseMap.set(responseKey, {
+            response: deepClone(value),
+            locations: [locationKey]
+          });
+        }
+      } else {
+        collectResponses(value, newPath);
+      }
+    }
+  }
+
+  collectResponses(spec);
+
+  // Find responses that appear multiple times (threshold of 3+ occurrences)
+  const commonResponses = new Map<string, {
+    response: any;
+    locations: string[];
+    refName: string;
+  }>();
+
+  let refCounter = 0;
+  for (const [responseKey, data] of responseMap.entries()) {
+    if (data.locations.length >= 3) {
+      const refName = generateResponseRefName(data.response, refCounter++);
+      commonResponses.set(responseKey, {
+        ...data,
+        refName
+      });
+    }
+  }
+
+  if (commonResponses.size === 0) {
+    return 0;
+  }
+
+  // Ensure components.responses exists
+  if (!spec.components) {
+    spec.components = {};
+  }
+  if (!spec.components.responses) {
+    spec.components.responses = {};
+  }
+
+  // Add common responses to components and replace inline definitions
+  let extractedCount = 0;
+  
+  for (const [responseKey, data] of commonResponses.entries()) {
+    // Add to components/responses
+    spec.components.responses[data.refName] = data.response;
+    
+    // Replace all occurrences with $ref
+    function replaceWithRef(obj: any, currentPath: string[] = []): void {
+      if (!obj || typeof obj !== 'object') return;
+
+      if (Array.isArray(obj)) {
+        obj.forEach((item, index) => {
+          replaceWithRef(item, [...currentPath, index.toString()]);
+        });
+        return;
+      }
+
+      for (const [key, value] of Object.entries(obj)) {
+        const newPath = [...currentPath, key];
+        
+        if (currentPath[currentPath.length - 1] === 'responses' && 
+            /^\d{3}$/.test(key) && 
+            isObject(value)) {
+          
+          const checkKey = createResponseKey(value);
+          if (checkKey === responseKey) {
+            obj[key] = { $ref: `#/components/responses/${data.refName}` };
+            extractedCount++;
+          }
+        } else {
+          replaceWithRef(value, newPath);
+        }
+      }
+    }
+
+    replaceWithRef(spec);
+  }
+
+  return extractedCount;
+}
+
+function createResponseKey(response: any): string {
+  // Create a stable key based on response structure
+  // Remove examples and other variable content for comparison
+  const normalized = deepClone(response);
+  
+  function removeVariableContent(obj: any): void {
+    if (!obj || typeof obj !== 'object') return;
+    
+    if (Array.isArray(obj)) {
+      obj.forEach(item => removeVariableContent(item));
+      return;
+    }
+    
+    // Remove variable fields that might differ between identical responses
+    delete obj.examples;
+    delete obj.example;
+    
+    for (const value of Object.values(obj)) {
+      removeVariableContent(value);
+    }
+  }
+  
+  removeVariableContent(normalized);
+  return JSON.stringify(normalized);
+}
+
+function generateResponseRefName(response: any, counter: number): string {
+  // Generate a meaningful name based on the response
+  const statusMatch = response.description?.match(/^(Unauthorized|Forbidden|Not Found|Bad Request|Too Many Requests|Internal Server Error|Success|Created|No Content)/i);
+  
+  if (statusMatch) {
+    const baseName = statusMatch[1].replace(/\s+/g, '');
+    return counter === 0 ? baseName : `${baseName}${counter + 1}`;
+  }
+  
+  // Fallback to generic names
+  const fallbackNames = [
+    'CommonError', 'ApiError', 'ValidationError', 'AuthError', 'ServerError',
+    'ClientError', 'NotFoundError', 'ForbiddenError', 'RateLimitError'
+  ];
+  
+  return fallbackNames[counter % fallbackNames.length] + Math.floor(counter / fallbackNames.length + 1);
+}
+
+function extractCommonSchemas(spec: any): number {
+  if (!spec.paths || typeof spec.paths !== 'object') {
+    return 0;
+  }
+
+  // Collect all inline schema objects with their locations and content
+  const schemaMap = new Map<string, {
+    schema: any;
+    locations: string[];
+  }>();
+
+  // First pass: collect all inline schemas
+  function collectSchemas(obj: any, currentPath: string[] = []): void {
+    if (!obj || typeof obj !== 'object') return;
+
+    if (Array.isArray(obj)) {
+      obj.forEach((item, index) => {
+        collectSchemas(item, [...currentPath, index.toString()]);
+      });
+      return;
+    }
+
+    for (const [key, value] of Object.entries(obj)) {
+      const newPath = [...currentPath, key];
+      
+      // Skip existing components/schemas to avoid circular extraction
+      if (currentPath[0] === 'components' && currentPath[1] === 'schemas') {
+        continue;
+      }
+      
+      // If we find a schema object that's not a $ref
+      if (key === 'schema' && 
+          isObject(value) && 
+          !('$ref' in value) &&
+          isInlineSchemaWorthExtracting(value)) {
+        
+        const schemaKey = createSchemaKey(value);
+        const locationKey = newPath.slice(0, -1).join('/');
+        
+        if (schemaMap.has(schemaKey)) {
+          schemaMap.get(schemaKey)!.locations.push(locationKey);
+        } else {
+          schemaMap.set(schemaKey, {
+            schema: deepClone(value),
+            locations: [locationKey]
+          });
+        }
+      } else {
+        collectSchemas(value, newPath);
+      }
+    }
+  }
+
+  collectSchemas(spec);
+
+  // Find schemas that appear multiple times (threshold of 3+ occurrences)
+  const commonSchemas = new Map<string, {
+    schema: any;
+    locations: string[];
+    refName: string;
+  }>();
+
+  let refCounter = 0;
+  for (const [schemaKey, data] of schemaMap.entries()) {
+    if (data.locations.length >= 3) {
+      const refName = generateSchemaRefName(data.schema, refCounter++);
+      commonSchemas.set(schemaKey, {
+        ...data,
+        refName
+      });
+    }
+  }
+
+  if (commonSchemas.size === 0) {
+    return 0;
+  }
+
+  // Ensure components.schemas exists
+  if (!spec.components) {
+    spec.components = {};
+  }
+  if (!spec.components.schemas) {
+    spec.components.schemas = {};
+  }
+
+  // Add common schemas to components and replace inline definitions
+  let extractedCount = 0;
+  
+  for (const [schemaKey, data] of commonSchemas.entries()) {
+    // Add to components/schemas
+    spec.components.schemas[data.refName] = data.schema;
+    
+    // Replace all occurrences with $ref
+    function replaceWithRef(obj: any, currentPath: string[] = []): void {
+      if (!obj || typeof obj !== 'object') return;
+
+      if (Array.isArray(obj)) {
+        obj.forEach((item, index) => {
+          replaceWithRef(item, [...currentPath, index.toString()]);
+        });
+        return;
+      }
+
+      for (const [key, value] of Object.entries(obj)) {
+        const newPath = [...currentPath, key];
+        
+        // Skip existing components/schemas
+        if (currentPath[0] === 'components' && currentPath[1] === 'schemas') {
+          continue;
+        }
+        
+        if (key === 'schema' && 
+            isObject(value) && 
+            !('$ref' in value)) {
+          
+          const checkKey = createSchemaKey(value);
+          if (checkKey === schemaKey) {
+            obj[key] = { $ref: `#/components/schemas/${data.refName}` };
+            extractedCount++;
+          }
+        } else {
+          replaceWithRef(value, newPath);
+        }
+      }
+    }
+
+    replaceWithRef(spec);
+  }
+
+  return extractedCount;
+}
+
+function createSchemaKey(schema: any): string {
+  // Create a stable key based on schema structure
+  // Remove examples and other variable content for comparison
+  const normalized = deepClone(schema);
+  
+  function removeVariableContent(obj: any): void {
+    if (!obj || typeof obj !== 'object') return;
+    
+    if (Array.isArray(obj)) {
+      obj.forEach(item => removeVariableContent(item));
+      return;
+    }
+    
+    // Remove variable fields that might differ between identical schemas
+    delete obj.examples;
+    delete obj.example;
+    delete obj.default;
+    delete obj.description; // Descriptions might vary while schema structure is same
+    delete obj.title;
+    
+    for (const value of Object.values(obj)) {
+      removeVariableContent(value);
+    }
+  }
+  
+  removeVariableContent(normalized);
+  return JSON.stringify(normalized);
+}
+
+function generateSchemaRefName(schema: any, counter: number): string {
+  // Generate a meaningful name based on the schema structure
+  
+  // Try to use type information
+  if (schema.type) {
+    const baseType = schema.type;
+    if (baseType === 'object' && schema.properties) {
+      // Look for common property names to infer purpose
+      const props = Object.keys(schema.properties);
+      if (props.includes('message')) {
+        return counter === 0 ? 'ErrorMessage' : `ErrorMessage${counter + 1}`;
+      }
+      if (props.includes('id') && props.includes('name')) {
+        return counter === 0 ? 'IdNameResource' : `IdNameResource${counter + 1}`;
+      }
+      if (props.includes('status')) {
+        return counter === 0 ? 'StatusObject' : `StatusObject${counter + 1}`;
+      }
+      return counter === 0 ? 'CommonObject' : `CommonObject${counter + 1}`;
+    }
+    if (baseType === 'array') {
+      return counter === 0 ? 'CommonArray' : `CommonArray${counter + 1}`;
+    }
+    if (baseType === 'string' && schema.enum) {
+      return counter === 0 ? 'CommonEnum' : `CommonEnum${counter + 1}`;
+    }
+  }
+  
+  // Fallback to generic names
+  const fallbackNames = [
+    'CommonSchema', 'SharedSchema', 'ReusableSchema', 'ExtractedSchema',
+    'CommonType', 'SharedType', 'ReusableType', 'ExtractedType'
+  ];
+  
+  return fallbackNames[counter % fallbackNames.length] + Math.floor(counter / fallbackNames.length + 1);
+}
+
+function isInlineSchemaWorthExtracting(schema: any): boolean {
+  // Don't extract trivial schemas
+  if (!isObject(schema)) return false;
+  
+  // Skip simple primitive schemas
+  if (schema.type && typeof schema.type === 'string' && 
+      !schema.properties && !schema.enum && !schema.items && !schema.oneOf && !schema.anyOf && !schema.allOf) {
+    return false;
+  }
+  
+  // Skip very small schemas (less than 2 properties)
+  const schemaSize = JSON.stringify(schema).length;
+  if (schemaSize < 50) {
+    return false;
+  }
+  
+  return true;
 }

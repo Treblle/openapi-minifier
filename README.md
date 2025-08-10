@@ -1,19 +1,31 @@
-# OpenAPI Minifier
+# Treblle - API Intelligence Platform
 
-A CLI tool by Treblle to minify OpenAPI v3 specifications by removing redundant information not relevant to AI Agents and LLMs.
+[![Treblle API Intelligence](https://github.com/user-attachments/assets/b268ae9e-7c8a-4ade-95da-b4ac6fce6eea)](https://treblle.com)
+
+[Website](http://treblle.com/) • [Documentation](https://docs.treblle.com/) • [Pricing](https://treblle.com/pricing)
+
+
+Treblle is an API intelligence platfom that helps developers, teams and organizations understand their APIs from a single integration point.
+
+***
+
+## OpenAPI Minifier CLI
+
+🧹 A CLI tool that compresses OpenAPI Specification files by up to 80% while preserving all essential details for understanding and integrating the API. Perfect for AI agents and LLMs as it drastically reduces token usage without sacrificing functionality.
+
+## Requirements
+- OpenAPI Specification Version 3.X 
 
 ## Features
 
-- ✅ **OpenAPI v3 Support**: Validates and processes OpenAPI 3.x specifications
-- ✅ **Smart Minification**: Removes verbose elements while preserving API functionality
-- ✅ **Advanced Optimizations**: Schema cleanup, unused component removal, and JSON minification
-- ✅ **Multiple Presets**: Choose from `max`, `balanced`, or `min` presets
 - ✅ **JSON & YAML**: Supports both input and output formats
 - ✅ **Large File Support**: Efficiently handles multi-MB specification files
-- ✅ **Validation**: Built-in OpenAPI specification validation
-- ✅ **Detailed Stats**: Shows size reduction and removed elements
-- ✅ **Deprecated Path Removal**: Option to remove deprecated API paths
-- ✅ **Common Response/Schema Extraction**: Extract reusable components
+- ✅ **Easy To Use Presets**: Choose from `max`, `balanced`, or `min` presets
+- ✅ **Deprecated Path Removal**: Remove unused and deprecated endpoints
+- ✅ **Schema Extraction**: Extract inlined schemas into reusable components
+- ✅ **Smart Minification**: Removes verbose elements while preserving API functionality
+- ✅ **Advanced Optimizations**: Schema cleanup, unused component removal, and JSON minification
+- ✅ **Developer Friendly**: Detailed statistics and CLI friendly UI
 
 ## Installation
 
@@ -63,73 +75,6 @@ openapi-minify input.json \
   --format json
 ```
 
-## Presets
-
-| Preset | Examples | Descriptions | Schema Cleanup | Remove Deprecated | Extract Components | Size Reduction | Use Case |
-|--------|----------|-------------|----------------|-------------------|-------------------|----------------|----------|
-| `max` | ❌ Remove | ❌ Remove all | ✅ Aggressive | ✅ Remove | ✅ Extract | **🔥 ~78%** | **Best for AI/LLMs** |
-| `balanced` | ❌ Remove | 📄 Schema only | ✅ Conservative | ✅ Remove | ✅ Extract | **🔥 ~67%** | **Recommended default** |
-| `min` | ✅ Keep | ✅ Keep all | ❌ None | ❌ Keep | ❌ No extraction | ~0% | Preserve documentation |
-
-## What Gets Removed
-
-### High Impact (Major size reduction)
-- **JSON minification**: Remove all whitespace from JSON output (🔥 **+20% extra reduction**)
-- **Unused schemas**: Remove unreferenced component schemas (🔥 **BIGGEST IMPACT**)
-- **Schema properties**: Remove validation constraints (`format`, `pattern`, `minLength`, etc.)
-- **Examples**: All request/response example bodies
-- **Descriptions**: Verbose operation and parameter descriptions  
-- **Summaries**: Operation summary fields
-- **Tag descriptions**: Keep tag names, remove descriptions
-
-### Elements Preserved (Essential for API calls)
-- Path definitions and HTTP methods
-- Parameter names, types, and required flags
-- Schema definitions and properties
-- Response status codes and structure
-- Authentication/security schemes
-- Required headers and formats
-
-## Example Results
-
-### Max Preset (Recommended for AI/LLMs)
-```
-📊 Results:
-   Original size: 287.4 KB
-   Minified size: 61.7 KB  
-   Size reduction: 78.5%
-
-   Optimizations applied:
-   • Examples: 62 removed
-   • Descriptions: 923 removed  
-   • Summaries: 19 removed
-   • Tags: 15 removed
-   • Deprecated paths: 8 removed
-   • Extracted responses: 12 extracted
-   • Extracted schemas: 45 extracted
-   • Schema properties cleaned (format, pattern, constraints)
-   • JSON minification (removes all whitespace)
-```
-
-### Balanced Preset
-```
-📊 Results:
-   Original size: 287.4 KB
-   Minified size: 93.6 KB
-   Size reduction: 67.4%
-
-   Optimizations applied:
-   • Examples: 62 removed
-   • Descriptions: 734 removed (kept schema descriptions)
-   • Summaries: 19 removed
-   • Tags: 15 removed
-   • Deprecated paths: 8 removed
-   • Extracted responses: 12 extracted
-   • Extracted schemas: 45 extracted
-   • Schema properties cleaned (format, pattern)
-   • JSON minification (removes all whitespace)
-```
-
 ## CLI Options
 
 ```
@@ -149,26 +94,58 @@ Options:
   -h, --help                           display help for command
 ```
 
-## Development
+## Presets
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd openapi-minifier
+| Preset | Examples | Descriptions | Schema Cleanup | Remove Deprecated | Extract Components | Size Reduction | Use Case |
+|--------|----------|-------------|----------------|-------------------|-------------------|----------------|----------|
+| `max` | ❌ Remove | ❌ Remove all | ✅ Aggressive | ✅ Remove | ✅ Extract | **🔥 ~78%** | **Best for AI/LLMs** |
+| `balanced` | ❌ Remove | 📄 Schema only | ✅ Conservative | ✅ Remove | ✅ Extract | **🔥 ~67%** | **Recommended default** |
+| `min` | ✅ Keep | ✅ Keep all | ❌ None | ❌ Keep | ❌ No extraction | ~0% | Preserve documentation |
 
-# Install dependencies
-npm install
+## What Gets Removed
 
-# Run development version
-npm run dev -- example.json --preset balanced
+- **JSON minification**: Remove all whitespace from JSON output
+- **Unused schemas**: Remove unreferenced component schemas
+- **Schema properties**: Remove validation constraints (`format`, `pattern`, `minLength`, etc.)
+- **Examples**: All request/response example bodies
+- **Descriptions**: Verbose operation and parameter descriptions  
+- **Summaries**: Operation summary fields
+- **Tag descriptions**: Keep tag names, remove descriptions
 
-# Build for production
-npm run build
 
-# Run tests
-npm test
-```
+## Example Results
+
+Test results using sample OpenAPI specifications included in this repository:
+
+### Jira API (2.5 MB)
+
+| Preset | Output Size | Reduction | Examples | Descriptions | Summaries | Tags | Deprecated | Extracted |
+|--------|-------------|-----------|----------|-------------|-----------|------|------------|-----------|
+| **max** | **767 KB** | **69.4%** | 0 removed | 3,116 removed | 498 removed | 13 removed | 4 removed | 1,262 total |
+| balanced | 1,021 KB | 59.3% | 0 removed | 725 removed | 498 removed | 13 removed | 4 removed | 1,262 total |
+| min | 1.6 MB | 35.0% | 0 removed | 0 removed | 0 removed | 0 removed | 0 removed | 0 total |
+
+### Stripe API (6.7 MB)
+
+| Preset | Output Size | Reduction | Examples | Descriptions | Summaries | Tags | Deprecated | Extracted |
+|--------|-------------|-----------|----------|-------------|-----------|------|------------|-----------|
+| **max** | **1.8 MB** | **72.4%** | 0 removed | 8,315 removed | 546 removed | 0 removed | 2 removed | 993 total |
+| balanced | 2.8 MB | 57.6% | 0 removed | 862 removed | 546 removed | 0 removed | 2 removed | 993 total |
+| min | 3.2 MB | 51.8% | 0 removed | 0 removed | 0 removed | 0 removed | 0 removed | 0 total |
+
+### OpenAPI Sample (1.9 MB)
+
+| Preset | Output Size | Reduction | Examples | Descriptions | Summaries | Tags | Deprecated | Extracted |
+|--------|-------------|-----------|----------|-------------|-----------|------|------------|-----------|
+| **max** | **446 KB** | **77.2%** | 162 removed | 3,328 removed | 164 removed | 0 removed | 0 removed | 99 total |
+| balanced | 686 KB | 64.9% | 162 removed | 844 removed | 164 removed | 0 removed | 0 removed | 99 total |
+| min | 1.4 MB | 25.6% | 0 removed | 0 removed | 0 removed | 0 removed | 0 removed | 0 total |
+
+## Support
+
+If you have problems of any kind feel free to reach out via <https://treblle.com> or email support@treblle.com and we'll do our best to help you out.
 
 ## License
 
-MIT
+Copyright 2025, Treblle Inc. Licensed under the MIT license:
+http://www.opensource.org/licenses/mit-license.php

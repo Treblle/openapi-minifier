@@ -100,18 +100,29 @@ export async function minifyOpenAPI(
 }
 
 function minifyDescriptionText(description: string): string {
-  return description
-    // Remove HTML tags
-    .replace(/<[^>]*>/g, '')
-    // Remove markdown formatting
-    .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
-    .replace(/\*([^*]+)\*/g, '$1')     // italic
-    .replace(/`([^`]+)`/g, '$1')       // inline code
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links [text](url) -> text
-    .replace(/^#+\s*/gm, '')          // headers
-    .replace(/^[-*]\s*/gm, '')        // list items
-    .replace(/^\d+\.\s*/gm, '')       // numbered lists
-    // Normalize whitespace
+  let result = description;
+  let prevResult;
+  
+  // Iterate until no more changes occur (max 10 iterations as safety)
+  let iterations = 0;
+  do {
+    prevResult = result;
+    result = result
+      // Remove HTML tags
+      .replace(/<[^>]*>/g, '')
+      // Remove markdown formatting
+      .replace(/\*\*([^*]+)\*\*/g, '$1') // bold
+      .replace(/\*([^*]+)\*/g, '$1')     // italic
+      .replace(/`([^`]+)`/g, '$1')       // inline code
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // links [text](url) -> text
+      .replace(/^#+\s*/gm, '')          // headers
+      .replace(/^[-*]\s*/gm, '')        // list items
+      .replace(/^\d+\.\s*/gm, '');      // numbered lists
+    iterations++;
+  } while (result !== prevResult && iterations < 10);
+  
+  // Normalize whitespace after sanitization is complete
+  return result
     .replace(/\s+/g, ' ')             // multiple spaces/tabs/newlines to single space
     .replace(/\n\s*\n/g, ' ')         // multiple newlines to single space
     .trim();                          // remove leading/trailing whitespace

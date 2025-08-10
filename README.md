@@ -11,6 +11,10 @@ Treblle is an API intelligence platfom that helps developers, teams and organiza
 
 ## OpenAPI Minifier CLI
 
+[![Latest Version](https://img.shields.io/npm/v/openapi-minifier)](https://www.npmjs.com/package/openapi-minifier)
+[![Total Downloads](https://img.shields.io/npm/dt/openapi-minifier)](https://www.npmjs.com/package/openapi-minifier)
+[![MIT Licence](https://img.shields.io/npm/l/openapi-minifier)](LICENSE.md)
+
 🧹 A CLI tool that compresses OpenAPI Specification files by up to 80% while preserving all essential details for understanding and integrating the API. Perfect for AI agents and LLMs as it drastically reduces token usage without sacrificing functionality.
 
 ## Requirements
